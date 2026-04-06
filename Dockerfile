@@ -10,7 +10,7 @@ COPY frontend/package*.json ./
 # Clean up package-lock.json and node_modules to fix native binding errors
 RUN rm -f package-lock.json && rm -rf node_modules
 
-RUN npm install
+RUN npm install --force
 
 COPY frontend ./
 RUN npm run build
