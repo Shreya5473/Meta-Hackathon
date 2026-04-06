@@ -1,11 +1,15 @@
 # Multi-stage Dockerfile for Hugging Face Spaces
 # Stage 1: Build frontend with Node.js
-FROM node:18-alpine AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app/frontend
 
 # Copy frontend source
 COPY frontend/package*.json ./
+
+# Clean up package-lock.json and node_modules to fix native binding errors
+RUN rm -f package-lock.json && rm -rf node_modules
+
 RUN npm install
 
 COPY frontend ./
