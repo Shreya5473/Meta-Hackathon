@@ -1,52 +1,47 @@
-"""GeoTrade OpenEnv — Baseline Inference Script
-================================================
-STDOUT FORMAT (required by hackathon validator):
-
-    [START] task=<task_name> env=geotrade model=<model_name>
-    [STEP]  step=<n> action=<action_str> reward=<0.00> done=<true|false> error=<msg|null>
-    [END]   success=<true|false> steps=<n> rewards=<r1,r2,...,rn>
-
-Environment variables:
-    API_BASE_URL   OpenAI-compatible API endpoint
-    MODEL_NAME     Model identifier
-    HF_TOKEN       API key (also accepted as OPENAI_API_KEY)
-
-Runtime: < 15 minutes on 2 vCPU / 8 GB machine.
-"""
-from __future__ import annotations
-
-import json
+import asyncio
 import os
-import sys
-import time
-from typing import Any, Optional
+import textwrap
+from typing import List, Optional
 
 from openai import OpenAI
 
-from openenv.environment import GeoTradeEnv
-from openenv.models import AssetDecision, GeoTradeAction, GeoTradeObservation
+from my_env_v4 import MyEnvV4Action, MyEnvV4Env
 
-# ── Env vars ──────────────────────────────────────────────────────────────────
+# Environment configuration
+IMAGE_NAME = os.getenv("IMAGE_NAME")
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 
-API_BASE_URL: str = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME: str = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-HF_TOKEN: str = os.environ.get("HF_TOKEN") or os.environ.get("OPENAI_API_KEY", "")
-ENV_NAME: str = "geotrade"
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+TASK_NAME = os.getenv("MY_ENV_V4_TASK", "echo")
+BENCHMARK = os.getenv("MY_ENV_V4_BENCHMARK", "my_env_v4")
 
-if not HF_TOKEN:
-    print("[END] success=false steps=0 rewards=", flush=True)
-    print("ERROR: HF_TOKEN (or OPENAI_API_KEY) is not set.", file=sys.stderr)
-    sys.exit(1)
+MAX_STEPS = 8
+TEMPERATURE = 0.7
+MAX_TOKENS = 150
+SUCCESS_SCORE_THRESHOLD = 0.1
 
-client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
+# Max possible reward: each token contributes 0.1, across all steps
+_MAX_REWARD_PER_STEP = MAX_TOKENS * 0.1
+MAX_TOTAL_REWARD = MAX_STEPS * _MAX_REWARD_PER_STEP
 
-# ── Logging helpers (exact format required by validator) ──────────────────────
+SYSTEM_PROMPT = textwrap.dedent(
+    """
+    You are interacting with a simple echo environment.
+    Each turn you must send a message. The environment will echo it back.
+    Reward is proportional to message length: reward = len(message) * 0.1
+    Your goal is to maximize total reward by sending meaningful, substantive messages.
+    Reply with exactly one message string — no quotes, no prefixes, just the message text.
+    """
+).strip()
 
 def log_start(task: str, env: str, model: str) -> None:
+    """Log the start of the episode."""
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
 
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
+    """Log each step of the episode."""
     error_val = error if error else "null"
     done_val = str(done).lower()
     print(
@@ -55,207 +50,108 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
     )
 
 
-def log_end(success: bool, steps: int, rewards: list[float]) -> None:
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+    """Log the end of the episode."""
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}", flush=True)
-
-
-# ── System prompts ────────────────────────────────────────────────────────────
-
-_SYSTEM_PROMPTS = {
-    "task_easy": (
-        "You are GeoTradeBot, an expert geopolitical trading analyst. "
-        "Analyse the geopolitical event and market data provided, then identify the top-3 most "
-        "impacted assets and whether to BUY, SELL, or HOLD each. "
-        "Respond with valid JSON only — no markdown, no explanation outside the JSON."
-        '\n\nJSON schema:\n{"decisions":[{"symbol":"XAUUSD","direction":"BUY","weight":0.20,"confidence":0.85}],'
-        '"primary_signal":"one sentence","reasoning":"chain of thought"}'
-    ),
-    "task_medium": (
-        "You are GeoTradeBot, an expert portfolio risk manager. "
-        "Given the geopolitical scenario and current portfolio, rebalance weights to hedge risk "
-        "and capture opportunities. Weights must sum to ≤ 1.0; no asset may exceed 0.45. "
-        "Respond with valid JSON only."
-        '\n\nJSON schema:\n{"decisions":[{"symbol":"XAUUSD","direction":"BUY","weight":0.25,"confidence":0.80}],'
-        '"primary_signal":"one sentence","reasoning":"explain each move"}'
-    ),
-    "task_hard": (
-        "You are GeoTradeBot managing a portfolio through an evolving geopolitical crisis. "
-        "At each step update your positions based on the latest intelligence. "
-        "Weights must sum to ≤ 1.0; no asset may exceed 0.45. "
-        "Respond with valid JSON only."
-        '\n\nJSON schema:\n{"decisions":[{"symbol":"WTI","direction":"BUY","weight":0.25,"confidence":0.80}],'
-        '"primary_signal":"crisis trajectory","reasoning":"step-by-step reasoning"}'
-    ),
-}
-
-
-# ── Observation → text ────────────────────────────────────────────────────────
-
-def obs_to_text(obs: GeoTradeObservation) -> str:
-    ctx = obs.geopolitical_context
-    lines = [
-        f"[GeoTrade Environment | {obs.task_id} | Step {obs.step + 1}/{obs.max_steps}]",
-        f"Scenario: {obs.scenario_id}",
-        "",
-        "GEOPOLITICAL CONTEXT",
-        f"Headline:    {ctx.headline}",
-        f"Region:      {ctx.region}  |  Severity: {ctx.severity}  |  GTI: {ctx.gti_score:.1f} ({ctx.gti_delta:+.1f})",
-        f"Categories:  {', '.join(ctx.categories)}",
-        f"Description: {ctx.description}",
-        "Recent news: " + " | ".join(ctx.news_headlines),
-        "",
-        "MARKET SNAPSHOT",
-        f"{'Asset':<10} {'Class':<12} {'Price':>10} {'GTI-Sens':>9}",
-    ]
-    for sym, snap in obs.market_snapshot.items():
-        lines.append(f"{snap.symbol:<10} {snap.asset_class:<12} {snap.price:>10.4f} {snap.gti_sensitivity:>9.2f}")
-
-    pf = obs.portfolio
-    lines += ["", "CURRENT PORTFOLIO"]
-    lines.append(f"Cash: {pf.cash_pct:.1%}")
-    for sym, w in pf.weights.items():
-        lines.append(f"  {sym}: {w:.1%}")
-
-    lines += ["", "YOUR TASK", obs.prompt, "", f"Available assets: {', '.join(obs.available_assets)}"]
-    return "\n".join(lines)
-
-
-# ── LLM call ──────────────────────────────────────────────────────────────────
-
-def call_llm(task_id: str, obs_text: str, history: list[dict]) -> dict[str, Any]:
-    messages = [{"role": "system", "content": _SYSTEM_PROMPTS[task_id]}]
-    messages.extend(history)
-    messages.append({"role": "user", "content": obs_text})
-
-    try:
-        resp = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=messages,
-            temperature=0.2,
-            max_tokens=1000,
-            response_format={"type": "json_object"},
-        )
-        raw = resp.choices[0].message.content or "{}"
-        return json.loads(raw)
-    except Exception as exc:
-        return {"decisions": [], "primary_signal": "", "reasoning": str(exc)}
-
-
-# ── Action builder ────────────────────────────────────────────────────────────
-
-def build_action(task_id: str, parsed: dict, obs: GeoTradeObservation) -> GeoTradeAction:
-    decisions: list[AssetDecision] = []
-    seen: set[str] = set()
-
-    for d in parsed.get("decisions", []):
-        sym = d.get("symbol", "")
-        if sym not in obs.market_snapshot or sym in seen:
-            continue
-        seen.add(sym)
-        try:
-            decisions.append(AssetDecision(
-                symbol=sym,
-                direction=d.get("direction", "HOLD"),
-                weight=float(d.get("weight", 0.0)),
-                confidence=float(d.get("confidence", 0.5)),
-            ))
-        except Exception:
-            continue
-
-    for sym in obs.available_assets:
-        if sym not in seen:
-            decisions.append(AssetDecision(
-                symbol=sym, direction="HOLD",
-                weight=obs.portfolio.weights.get(sym, 0.0), confidence=0.3,
-            ))
-
-    return GeoTradeAction(
-        task_id=task_id,
-        decisions=decisions,
-        primary_signal=str(parsed.get("primary_signal", "")),
-        reasoning=str(parsed.get("reasoning", "")),
+    print(
+        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}",
+        flush=True,
     )
 
 
-def action_to_str(action: GeoTradeAction) -> str:
-    """Compact single-line representation for [STEP] line."""
-    buys  = [f"{d.symbol}:BUY@{d.weight:.2f}"  for d in action.decisions if d.direction == "BUY"]
-    sells = [f"{d.symbol}:SELL@{d.weight:.2f}" for d in action.decisions if d.direction == "SELL"]
-    parts = buys + sells
-    signal = action.primary_signal[:60].replace("\n", " ") if action.primary_signal else ""
-    return f"[{','.join(parts)}] signal='{signal}'" if parts else f"HOLD signal='{signal}'"
+def build_user_prompt(step: int, last_echoed: str, last_reward: float, history: List[str]) -> str:
+    """Build the user prompt for the LLM."""
+    history_block = "\n".join(history[-4:]) if history else "None"
+    return textwrap.dedent(
+        f"""
+        Step: {step}
+        Last echoed message: {last_echoed!r}
+        Last reward: {last_reward:.2f}
+        Previous steps:
+        {history_block}
+        Send your next message.
+        """
+    ).strip()
 
 
-# ── Single episode runner ─────────────────────────────────────────────────────
+def get_model_message(
+    client: OpenAI, step: int, last_echoed: str, last_reward: float, history: List[str]
+) -> str:
+    """Get a message from the LLM."""
+    user_prompt = build_user_prompt(step, last_echoed, last_reward, history)
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=TEMPERATURE,
+            max_tokens=MAX_TOKENS,
+            stream=False,
+        )
+        text = (completion.choices[0].message.content or "").strip()
+        return text if text else "hello"
+    except Exception as exc:
+        print(f"[DEBUG] Model request failed: {exc}", flush=True)
+        return "hello"
 
-def run_episode(task_id: str, scenario_idx: int) -> None:
-    scenario_tag = f"{task_id}_{scenario_idx + 1:02d}"
-    env = GeoTradeEnv(task_id=task_id, scenario_idx=scenario_idx)
-    obs = env.reset(seed=42)
 
-    rewards: list[float] = []
+async def main() -> None:
+    """Main inference loop."""
+    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+
+    env = await MyEnvV4Env.from_docker_image(IMAGE_NAME)
+
+    history: List[str] = []
+    rewards: List[float] = []
     steps_taken = 0
+    score = 0.0
     success = False
-    history: list[dict] = []
 
-    log_start(task=scenario_tag, env=ENV_NAME, model=MODEL_NAME)
+    log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
 
     try:
-        for step_num in range(1, obs.max_steps + 1):
-            obs_text = obs_to_text(obs)
-            parsed = call_llm(task_id, obs_text, history)
-            action = build_action(task_id, parsed, obs)
-            action_str = action_to_str(action)
+        result = await env.reset()
+        last_echoed = result.observation.echoed_message
+        last_reward = 0.0
 
-            result = env.step(action)
-            reward = result.reward.total
-            done = result.done
-            error_msg = None if result.reward.total > 0 else result.reward.explanation[:80]
-
-            rewards.append(reward)
-            steps_taken = step_num
-
-            log_step(step=step_num, action=action_str, reward=reward, done=done, error=error_msg)
-
-            # Add to conversation history for multi-step context
-            history.append({"role": "user", "content": obs_text})
-            history.append({"role": "assistant", "content": json.dumps(parsed)})
-
-            obs = result.observation
-            if done:
-                success = reward >= 0.4
+        for step in range(1, MAX_STEPS + 1):
+            if result.done:
                 break
 
-    except Exception as exc:
-        error_str = str(exc)[:100]
-        log_step(step=steps_taken + 1, action="ERROR", reward=0.0, done=True, error=error_str)
-        success = False
+            message = get_model_message(client, step, last_echoed, last_reward, history)
 
-    log_end(success=success, steps=steps_taken, rewards=rewards)
+            result = await env.step(MyEnvV4Action(message=message))
+            obs = result.observation
 
+            reward = result.reward or 0.0
+            done = result.done
+            error = None
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+            rewards.append(reward)
+            steps_taken = step
+            last_echoed = obs.echoed_message
+            last_reward = reward
 
-def main() -> None:
-    start = time.time()
+            log_step(step=step, action=message, reward=reward, done=done, error=error)
 
-    # Task definitions: (task_id, num_scenarios)
-    tasks = [
-        ("task_easy",   5),
-        ("task_medium", 3),
-        ("task_hard",   2),
-    ]
+            history.append(f"Step {step}: {message!r} -> reward {reward:+.2f}")
 
-    all_rewards: list[float] = []
+            if done:
+                break
 
-    for task_id, n_scenarios in tasks:
-        for scenario_idx in range(n_scenarios):
-            run_episode(task_id=task_id, scenario_idx=scenario_idx)
+        score = sum(rewards) / MAX_TOTAL_REWARD if MAX_TOTAL_REWARD > 0 else 0.0
+        score = min(max(score, 0.0), 1.0)
+        success = score >= SUCCESS_SCORE_THRESHOLD
 
-    elapsed = time.time() - start
-    print(f"# Total runtime: {elapsed:.1f}s", flush=True)
+    finally:
+        try:
+            await env.close()
+        except Exception as e:
+            print(f"[DEBUG] env.close() error (container cleanup): {e}", flush=True)
+        log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
