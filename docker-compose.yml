@@ -1,0 +1,150 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: geotrade_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-geotrade}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-geotrade_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-geotrade}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/docker/initdb:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-geotrade}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: geotrade_redis
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru --save ""
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: api
+    container_name: geotrade_api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-geotrade}:${POSTGRES_PASSWORD:-geotrade_secret}@postgres:5432/${POSTGRES_DB:-geotrade}
+      DATABASE_SYNC_URL: postgresql+psycopg2://${POSTGRES_USER:-geotrade}:${POSTGRES_PASSWORD:-geotrade_secret}@postgres:5432/${POSTGRES_DB:-geotrade}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY}
+      FINNHUB_API_KEY_2: ${FINNHUB_API_KEY_2}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - model_artifacts:/app/model_artifacts
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: worker
+    container_name: geotrade_worker
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-geotrade}:${POSTGRES_PASSWORD:-geotrade_secret}@postgres:5432/${POSTGRES_DB:-geotrade}
+      DATABASE_SYNC_URL: postgresql+psycopg2://${POSTGRES_USER:-geotrade}:${POSTGRES_PASSWORD:-geotrade_secret}@postgres:5432/${POSTGRES_DB:-geotrade}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - model_artifacts:/app/model_artifacts
+    restart: unless-stopped
+
+  flower:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: worker
+    container_name: geotrade_flower
+    command: celery -A app.tasks.celery_app flower --port=5555
+    env_file: .env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    ports:
+      - "5555:5555"
+    depends_on:
+      - worker
+    restart: unless-stopped
+
+  beat:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: worker
+    container_name: geotrade_beat
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-geotrade}:${POSTGRES_PASSWORD:-geotrade_secret}@postgres:5432/${POSTGRES_DB:-geotrade}
+      DATABASE_SYNC_URL: postgresql+psycopg2://${POSTGRES_USER:-geotrade}:${POSTGRES_PASSWORD:-geotrade_secret}@postgres:5432/${POSTGRES_DB:-geotrade}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      - redis
+      - worker
+    restart: unless-stopped
+
+  market-worker:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile
+      target: worker
+    container_name: geotrade_market_worker
+    command: celery -A app.tasks.celery_app worker --loglevel=info -Q market --concurrency=2
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-geotrade}:${POSTGRES_PASSWORD:-geotrade_secret}@postgres:5432/${POSTGRES_DB:-geotrade}
+      DATABASE_SYNC_URL: postgresql+psycopg2://${POSTGRES_USER:-geotrade}:${POSTGRES_PASSWORD:-geotrade_secret}@postgres:5432/${POSTGRES_DB:-geotrade}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY}
+      FINNHUB_API_KEY_2: ${FINNHUB_API_KEY_2}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - model_artifacts:/app/model_artifacts
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  model_artifacts:

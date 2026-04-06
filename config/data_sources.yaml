@@ -1,0 +1,126 @@
+# ============================================================
+# GEOTRADE — Data Sources Configuration
+# ============================================================
+# Add or remove data sources without touching Python code.
+# Set enabled: false to disable without removing the config.
+
+version: "1.0"
+
+market_data:
+
+  finnhub:
+    enabled: true
+    description: "Real-time stock & forex quotes (free tier)"
+    api_key_env: FINNHUB_API_KEY
+    base_url: https://finnhub.io/api/v1
+    rate_limit: 60           # requests per minute (free tier)
+    supports: [stocks, forex, crypto, etfs]
+    docs: https://finnhub.io/docs/api
+
+  fred:
+    enabled: true
+    description: "Federal Reserve Economic Data — macro indicators"
+    api_key_env: FRED_API_KEY
+    base_url: https://api.stlouisfed.org/fred
+    rate_limit: 120
+    supports: [macro, interest_rates, gdp, cpi]
+    docs: https://fred.stlouisfed.org/docs/api/fred/
+
+  oanda:
+    enabled: false
+    description: "OANDA REST API — Forex & commodity quotes"
+    api_key_env: OANDA_API_KEY
+    base_url: https://api-fxtrade.oanda.com/v3
+    rate_limit: 100
+    supports: [forex, commodities]
+    docs: https://developer.oanda.com/rest-live-v20/introduction/
+
+  polygon:
+    enabled: false
+    description: "Polygon.io — US stocks & options real-time"
+    api_key_env: POLYGON_API_KEY
+    base_url: https://api.polygon.io
+    rate_limit: 5            # free tier
+    supports: [stocks, options, forex, crypto]
+    docs: https://polygon.io/docs/stocks
+
+  alpha_vantage:
+    enabled: false
+    description: "Alpha Vantage — stocks, forex, crypto, technicals"
+    api_key_env: ALPHA_VANTAGE_API_KEY
+    base_url: https://www.alphavantage.co/query
+    rate_limit: 5
+    supports: [stocks, forex, crypto, technicals]
+    docs: https://www.alphavantage.co/documentation/
+
+geopolitical_data:
+
+  gdelt:
+    enabled: true
+    description: "GDELT Project — global event database (no key required)"
+    base_url: https://api.gdeltproject.org/api/v2
+    rate_limit: 10
+    update_interval_minutes: 15
+    docs: https://blog.gdeltproject.org/gdelt-2-0-our-global-world-in-realtime/
+
+  newsapi_ai:
+    enabled: true
+    description: "NewsAPI.ai — structured news with NLP"
+    api_key_env: NEWSAPI_KEY
+    base_url: https://eventregistry.org/api/v1
+    rate_limit: 60
+    update_interval_minutes: 5
+    docs: https://newsapi.ai/documentation
+
+  rss_feeds:
+    enabled: true
+    description: "RSS ingestion from major news sources"
+    update_interval_minutes: 10
+    feeds:
+      - name: Reuters World
+        url: https://feeds.reuters.com/reuters/worldNews
+        region: global
+      - name: BBC World
+        url: https://feeds.bbci.co.uk/news/world/rss.xml
+        region: global
+      - name: Al Jazeera
+        url: https://www.aljazeera.com/xml/rss/all.xml
+        region: middle_east
+      - name: Deutsche Welle
+        url: https://rss.dw.com/xml/rss-en-world
+        region: europe
+      - name: South China Morning Post
+        url: https://www.scmp.com/rss/91/feed
+        region: asia_pacific
+
+broker_connectors:
+
+  alpaca:
+    enabled: false
+    description: "Alpaca Markets — commission-free US stocks/crypto"
+    paper_trading: true      # always start in paper mode
+    api_key_env: ALPACA_API_KEY
+    secret_key_env: ALPACA_SECRET_KEY
+    base_url: https://paper-api.alpaca.markets
+    live_url: https://api.alpaca.markets
+    docs: https://alpaca.markets/docs/
+
+  interactive_brokers:
+    enabled: false
+    description: "Interactive Brokers — global multi-asset"
+    paper_trading: true
+    gateway_host: localhost
+    gateway_port: 4001
+    docs: https://interactivebrokers.github.io/tws-api/
+
+llm:
+
+  openrouter:
+    enabled: true
+    description: "OpenRouter — LLM gateway for signal reasoning enhancement"
+    api_key_env: OPENROUTER_API_KEY
+    base_url: https://openrouter.ai/api/v1
+    model: openai/gpt-4o-mini      # cost-effective; change to claude/mistral etc.
+    max_calls_per_hour: 20          # hard cap to control costs
+    used_for: [reasoning_chains, signal_explanations]
+    docs: https://openrouter.ai/docs

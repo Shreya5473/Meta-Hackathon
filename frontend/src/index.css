@@ -1,0 +1,224 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Geist", system-ui, sans-serif;
+  --font-mono: "Geist Mono", monospace;
+
+  --color-background: #0f1117;
+  --color-foreground: #f8fafc;
+
+  --color-card: #161c28;
+  --color-card-foreground: #f8fafc;
+
+  --color-primary: #ffffff;
+  --color-primary-foreground: #0f1117;
+
+  --color-secondary: #1e293b;
+  --color-secondary-foreground: #cbd5e1;
+
+  --color-muted: #1e293b;
+  --color-muted-foreground: #94a3b8;
+
+  --color-accent: #ffffff;
+  --color-accent-foreground: #0f1117;
+
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+
+  --color-border: #334155;
+  --color-input: #334155;
+  --color-ring: #ffffff;
+
+  --color-cyber-cyan: #ffffff;
+  --color-cyber-teal: #e2e8f0;
+  --color-cyber-green: #4ade80;
+  --color-cyber-amber: #fbbf24;
+  --color-cyber-red: #f87171;
+
+  --radius-sm: 0.25rem;
+  --radius: 0.5rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    @apply antialiased min-h-screen overflow-hidden;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* Ensure inputs and buttons have adequate touch targets */
+  button, input, select, textarea {
+    min-height: 44px;
+  }
+
+  /* Prevent font size inflation on mobile */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+}
+
+@layer components {
+  .cyber-panel {
+    background: rgba(22, 28, 40, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(51, 65, 85, 0.6);
+  }
+
+  .cyber-glow {
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+  }
+
+  .cyber-glow-strong {
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.2);
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+.vertical-rl {
+  writing-mode: vertical-rl;
+}
+
+@keyframes scan {
+  from {
+    top: 0;
+  }
+
+  to {
+    top: 100%;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.4);
+  }
+}
+
+@keyframes data-flow {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes tension-pulse {
+  0%, 100% {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+}
+
+@keyframes matrix-rain {
+  0% {
+    transform: translateY(-100%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+@keyframes hologram-flicker {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  75% {
+    opacity: 0.9;
+  }
+}
+
+.animate-scan {
+  animation: scan 10s linear infinite;
+  box-shadow: 0 0 15px 1px rgba(255, 255, 255, 0.5);
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-data-flow {
+  animation: data-flow 3s linear infinite;
+}
+
+.animate-tension-pulse {
+  animation: tension-pulse 4s ease-in-out infinite;
+}
+
+.animate-matrix-rain {
+  animation: matrix-rain 8s linear infinite;
+}
+
+.animate-hologram-flicker {
+  animation: hologram-flicker 0.1s ease-in-out infinite;
+}
+
+/* Enhanced cyber effects */
+.cyber-border {
+  position: relative;
+}
+
+.cyber-border::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 1px solid transparent;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent) border-box;
+  border-radius: inherit;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
+
+.holographic {
+  background: linear-gradient(45deg, 
+    rgba(255, 255, 255, 0.03) 0%, 
+    rgba(200, 200, 200, 0.05) 25%, 
+    rgba(150, 150, 150, 0.03) 50%, 
+    rgba(200, 200, 200, 0.05) 75%, 
+    rgba(255, 255, 255, 0.03) 100%);
+  background-size: 400% 400%;
+  animation: holographic-shift 8s ease infinite;
+}
+
+@keyframes holographic-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}

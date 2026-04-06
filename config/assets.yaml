@@ -1,0 +1,381 @@
+# ============================================================
+# GEOTRADE — Asset Universe Configuration
+# ============================================================
+# Add new assets here without touching Python code.
+# Fields:
+#   symbol      : ticker / identifier used across the platform
+#   label       : human-readable short name
+#   class       : commodity | equity_index | forex | crypto | stock
+#   sector      : energy | metals | grains | defense | financials | tech | etc.
+#   region      : global | americas | europe | asia_pacific | middle_east
+#   finnhub_sym : Finnhub API symbol (leave blank to use synthetic prices)
+#   oanda_sym   : OANDA symbol for forex/commodities
+#   geo_sensitivity : list of geopolitical shock types this asset reacts to
+#   base_price  : reference price for synthetic data generation
+#   description : one-line description shown in the UI
+
+version: "1.0"
+
+assets:
+
+  # ── COMMODITIES ──────────────────────────────────────────
+  - symbol: XAUUSD
+    label: Gold
+    class: commodity
+    sector: metals
+    region: global
+    finnhub_sym: GLD
+    oanda_sym: XAU_USD
+    geo_sensitivity: [military_escalation, sanctions, nuclear_threat, political_instability]
+    base_price: 2340
+    description: Safe-haven precious metal; spikes on geopolitical risk
+
+  - symbol: XAGUSD
+    label: Silver
+    class: commodity
+    sector: metals
+    region: global
+    finnhub_sym: SLV
+    oanda_sym: XAG_USD
+    geo_sensitivity: [military_escalation, sanctions, economic_policy_change]
+    base_price: 29
+    description: Industrial & safe-haven metal; follows gold with higher beta
+
+  - symbol: WTI
+    label: WTI Crude Oil
+    class: commodity
+    sector: energy
+    region: middle_east
+    finnhub_sym: USO
+    oanda_sym: WTI_USD
+    geo_sensitivity: [energy_supply_disruption, military_escalation, sanctions]
+    base_price: 82
+    description: West Texas Intermediate crude; key Middle East risk barometer
+
+  - symbol: BRENT
+    label: Brent Oil
+    class: commodity
+    sector: energy
+    region: middle_east
+    oanda_sym: BCO_USD
+    geo_sensitivity: [energy_supply_disruption, military_escalation, sanctions]
+    base_price: 86
+    description: European benchmark crude; Hormuz/Russia risk sensitive
+
+  - symbol: NATGAS
+    label: Natural Gas
+    class: commodity
+    sector: energy
+    region: europe
+    finnhub_sym: UNG
+    geo_sensitivity: [energy_supply_disruption, sanctions, trade_restrictions]
+    base_price: 3.2
+    description: High sensitivity to Russia-Europe supply disruptions
+
+  - symbol: COPPER
+    label: Copper
+    class: commodity
+    sector: metals
+    region: asia_pacific
+    geo_sensitivity: [trade_restrictions, economic_policy_change, supply_chain_disruption]
+    base_price: 4.5
+    description: Industrial metal; China/US trade tension indicator
+
+  - symbol: WHEAT
+    label: Wheat
+    class: commodity
+    sector: grains
+    region: europe
+    geo_sensitivity: [military_escalation, supply_chain_disruption, trade_restrictions]
+    base_price: 580
+    description: Ukraine/Russia supply shock barometer
+
+  - symbol: CORN
+    label: Corn
+    class: commodity
+    sector: grains
+    region: americas
+    geo_sensitivity: [supply_chain_disruption, trade_restrictions, political_instability]
+    base_price: 430
+    description: Ethanol demand + supply chain disruption sensitive
+
+  - symbol: SOYBEANS
+    label: Soybeans
+    class: commodity
+    sector: grains
+    region: americas
+    geo_sensitivity: [trade_restrictions, economic_policy_change]
+    base_price: 1150
+    description: US-China trade war barometer
+
+  # ── EQUITY INDICES ────────────────────────────────────────
+  - symbol: SPX
+    label: S&P 500
+    class: equity_index
+    sector: broad_equity
+    region: americas
+    finnhub_sym: SPY
+    geo_sensitivity: [political_instability, economic_policy_change, military_escalation]
+    base_price: 5200
+    description: US large-cap benchmark; inverse geopolitical risk proxy
+
+  - symbol: NDX
+    label: Nasdaq 100
+    class: equity_index
+    sector: technology
+    region: americas
+    finnhub_sym: QQQ
+    geo_sensitivity: [trade_restrictions, cyber_attack, economic_policy_change]
+    base_price: 18000
+    description: US tech index; China/supply-chain sensitive
+
+  - symbol: DJI
+    label: Dow Jones
+    class: equity_index
+    sector: broad_equity
+    region: americas
+    finnhub_sym: DIA
+    geo_sensitivity: [political_instability, economic_policy_change]
+    base_price: 38000
+    description: US industrial index
+
+  - symbol: DAX
+    label: DAX
+    class: equity_index
+    sector: broad_equity
+    region: europe
+    geo_sensitivity: [sanctions, energy_supply_disruption, military_escalation]
+    base_price: 17500
+    description: Germany benchmark; highly Russia/Ukraine sensitive
+
+  - symbol: NKY
+    label: Nikkei 225
+    class: equity_index
+    sector: broad_equity
+    region: asia_pacific
+    geo_sensitivity: [military_escalation, trade_restrictions, territorial_dispute]
+    base_price: 38000
+    description: Japan benchmark; DPRK/China risk sensitive
+
+  - symbol: HSI
+    label: Hang Seng
+    class: equity_index
+    sector: broad_equity
+    region: asia_pacific
+    geo_sensitivity: [trade_restrictions, political_instability, territorial_dispute]
+    base_price: 16500
+    description: Hong Kong benchmark; China policy sensitive
+
+  # ── FOREX ─────────────────────────────────────────────────
+  - symbol: EURUSD
+    label: EUR/USD
+    class: forex
+    sector: currencies
+    region: europe
+    oanda_sym: EUR_USD
+    geo_sensitivity: [sanctions, energy_supply_disruption, political_instability]
+    base_price: 1.085
+    description: Major pair; Russia/ECB policy sensitive
+
+  - symbol: USDJPY
+    label: USD/JPY
+    class: forex
+    sector: currencies
+    region: asia_pacific
+    oanda_sym: USD_JPY
+    geo_sensitivity: [military_escalation, territorial_dispute, nuclear_threat]
+    base_price: 150.5
+    description: Yen safe-haven flows on Asia risk events
+
+  - symbol: USDCNY
+    label: USD/CNY
+    class: forex
+    sector: currencies
+    region: asia_pacific
+    oanda_sym: USD_CNY
+    geo_sensitivity: [trade_restrictions, territorial_dispute, economic_policy_change]
+    base_price: 7.24
+    description: China trade/geopolitical risk proxy
+
+  - symbol: GBPUSD
+    label: GBP/USD
+    class: forex
+    sector: currencies
+    region: europe
+    oanda_sym: GBP_USD
+    geo_sensitivity: [political_instability, economic_policy_change, sanctions]
+    base_price: 1.27
+    description: Sterling; UK political risk sensitive
+
+  - symbol: USDCHF
+    label: USD/CHF
+    class: forex
+    sector: currencies
+    region: europe
+    oanda_sym: USD_CHF
+    geo_sensitivity: [military_escalation, nuclear_threat, political_instability]
+    base_price: 0.895
+    description: Swiss franc safe-haven flows
+
+  - symbol: DXY
+    label: US Dollar Index
+    class: forex
+    sector: currencies
+    region: global
+    geo_sensitivity: [political_instability, sanctions, economic_policy_change]
+    base_price: 104
+    description: Dollar strength inverse to global risk appetite
+
+  # ── CRYPTO ────────────────────────────────────────────────
+  - symbol: BTCUSD
+    label: Bitcoin
+    class: crypto
+    sector: digital_assets
+    region: global
+    finnhub_sym: BINANCE:BTCUSDT
+    geo_sensitivity: [sanctions, political_instability, economic_policy_change]
+    base_price: 68000
+    description: Sanctions/capital flight alternative; high volatility
+
+  - symbol: ETHUSD
+    label: Ethereum
+    class: crypto
+    sector: digital_assets
+    region: global
+    finnhub_sym: BINANCE:ETHUSDT
+    geo_sensitivity: [sanctions, economic_policy_change]
+    base_price: 3200
+    description: Smart contract platform; follows Bitcoin with higher beta
+
+  # ── DEFENSE STOCKS ────────────────────────────────────────
+  - symbol: LMT
+    label: Lockheed Martin
+    class: stock
+    sector: defense
+    region: americas
+    finnhub_sym: LMT
+    geo_sensitivity: [military_escalation, nuclear_threat, territorial_dispute]
+    base_price: 470
+    description: Defense prime; spikes on military escalation signals
+
+  - symbol: RTX
+    label: Raytheon Technologies
+    class: stock
+    sector: defense
+    region: americas
+    finnhub_sym: RTX
+    geo_sensitivity: [military_escalation, sanctions, territorial_dispute]
+    base_price: 115
+    description: Missiles & aerospace; Russia/Middle East sensitive
+
+  - symbol: NOC
+    label: Northrop Grumman
+    class: stock
+    sector: defense
+    region: americas
+    finnhub_sym: NOC
+    geo_sensitivity: [military_escalation, nuclear_threat]
+    base_price: 460
+    description: Space & cyber defense; DPRK/nuclear events
+
+  - symbol: GD
+    label: General Dynamics
+    class: stock
+    sector: defense
+    region: americas
+    finnhub_sym: GD
+    geo_sensitivity: [military_escalation, territorial_dispute]
+    base_price: 290
+    description: Land & naval systems; NATO expansion beneficiary
+
+  - symbol: BA
+    label: Boeing
+    class: stock
+    sector: defense
+    region: americas
+    finnhub_sym: BA
+    geo_sensitivity: [military_escalation, trade_restrictions, supply_chain_disruption]
+    base_price: 185
+    description: Defense & commercial aerospace; dual geopolitical exposure
+
+  # ── ENERGY STOCKS ─────────────────────────────────────────
+  - symbol: XOM
+    label: ExxonMobil
+    class: stock
+    sector: energy
+    region: americas
+    finnhub_sym: XOM
+    geo_sensitivity: [energy_supply_disruption, sanctions, military_escalation]
+    base_price: 118
+    description: Integrated oil major; benefits from supply disruption risk
+
+  - symbol: CVX
+    label: Chevron
+    class: stock
+    sector: energy
+    region: americas
+    finnhub_sym: CVX
+    geo_sensitivity: [energy_supply_disruption, sanctions, military_escalation]
+    base_price: 155
+    description: Integrated energy; Middle East/Russia exposure
+
+  - symbol: BP
+    label: BP plc
+    class: stock
+    sector: energy
+    region: europe
+    finnhub_sym: BP
+    geo_sensitivity: [energy_supply_disruption, sanctions, political_instability]
+    base_price: 38
+    description: European major; Russia divestment & transition risk
+
+  - symbol: SHEL
+    label: Shell
+    class: stock
+    sector: energy
+    region: europe
+    finnhub_sym: SHEL
+    geo_sensitivity: [energy_supply_disruption, sanctions, political_instability]
+    base_price: 65
+    description: LNG & oil major; Europe energy security plays
+
+  # ── BOND PROXIES ──────────────────────────────────────────
+  - symbol: TLT
+    label: US 20Y Treasury
+    class: bond
+    sector: fixed_income
+    region: americas
+    finnhub_sym: TLT
+    geo_sensitivity: [political_instability, nuclear_threat, military_escalation]
+    base_price: 92
+    description: Long-duration safe haven; flight-to-quality in crises
+
+  - symbol: GLD
+    label: Gold ETF (GLD)
+    class: etf
+    sector: metals
+    region: global
+    finnhub_sym: GLD
+    geo_sensitivity: [military_escalation, sanctions, nuclear_threat]
+    base_price: 215
+    description: Physical gold proxy ETF
+
+  - symbol: XLE
+    label: Energy Sector ETF
+    class: etf
+    sector: energy
+    region: americas
+    finnhub_sym: XLE
+    geo_sensitivity: [energy_supply_disruption, military_escalation, sanctions]
+    base_price: 91
+    description: Broad US energy sector; oil price amplifier
+
+  - symbol: ITA
+    label: Defense ETF (ITA)
+    class: etf
+    sector: defense
+    region: americas
+    finnhub_sym: ITA
+    geo_sensitivity: [military_escalation, nuclear_threat, territorial_dispute]
+    base_price: 140
+    description: Aerospace & defense basket; conflict risk proxy

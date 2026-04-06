@@ -1,0 +1,122 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+.installed.cfg
+MANIFEST
+.Python
+
+# Virtual environments
+.venv/
+.venv311/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# pytest / testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+nosetests.xml
+test-results/
+playwright-report/
+
+# mypy / type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+.pyre/
+
+# Distribution / packaging
+*.manifest
+*.spec
+
+# Jupyter
+.ipynb_checkpoints
+
+# ── Node / Frontend ──────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+dist/
+build/
+.next/
+.nuxt/
+.output/
+.cache/
+.parcel-cache/
+*.local
+
+# ── Environment & Secrets ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# (keep Dockerfile and docker-compose.yml)
+
+# ── Database ──────────────────────────────────────────────────────────────────
+*.db
+*.sqlite3
+*.sqlite
+
+# ── OS / Editor ───────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.iml
+
+# ── Project-specific cleanup ──────────────────────────────────────────────────
+# Large dev artifacts not needed for submission
+geotrade.egg-info/
+model_artifacts/
+frontend_old/
+frontend.zip
+audit_report.txt
+geotrade_tools_and_flow.txt
+work/
+gaps.md
+flow.md
+baseline_scores.json
+
+# Alembic env (keep migrations but not local config)
+alembic.ini
+
+# Logs
+*.log
+logs/

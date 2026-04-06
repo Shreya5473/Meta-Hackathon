@@ -1,0 +1,14 @@
+.git
+.venv
+.venv311
+__pycache__
+*.pyc
+.pytest_cache
+htmlcov
+.coverage
+.mypy_cache
+.ruff_cache
+model_artifacts
+frontend/node_modules
+frontend/.svelte-kit
+frontend/dist

@@ -1,0 +1,41 @@
+fastapi==0.111.0
+pydantic==2.7.4
+supabase>=2.0.0
+pydantic-settings==2.3.1
+sqlalchemy[asyncio]==2.0.30
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+redis[hiredis]==5.0.5
+msgpack==1.0.8
+celery[redis]==5.4.0
+alembic==1.13.1
+structlog==24.2.0
+transformers==4.41.2
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.3.1+cpu
+# For NLP
+vaderSentiment==3.3.2
+hdbscan==0.8.37
+scikit-learn==1.5.0
+numpy==1.26.4
+pandas==2.2.2
+polars==0.20.31
+# External APIs / RSS
+feedparser==6.0.11
+httpx==0.27.0
+tenacity==8.3.0
+# API support
+slowapi==0.1.9
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9
+# Testing
+pytest==8.2.2
+pytest-asyncio==0.23.7
+pytest-timeout==2.3.1
+anyio==4.4.0
+aiosqlite==0.20.0
+# Monitoring (optional setup)
+opentelemetry-api==1.25.0
+opentelemetry-sdk==1.25.0
+opentelemetry-instrumentation-fastapi==0.46b0
+opentelemetry-exporter-otlp==1.25.0

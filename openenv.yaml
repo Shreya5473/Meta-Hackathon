@@ -1,0 +1,116 @@
+name: geotrade-openenv
+version: "1.0.0"
+description: >
+  GeoTrade is a geopolitical trading environment that evaluates AI agents on
+  real-world tasks: identifying how geopolitical events impact financial markets,
+  rebalancing portfolios under geopolitical stress, and managing multi-asset
+  portfolios through evolving crisis episodes. The environment is grounded in
+  real geo-financial correlations modelled by the GeoTrade AI system.
+
+tags:
+  - openenv
+  - finance
+  - geopolitics
+  - trading
+  - portfolio-management
+  - real-world
+
+authors:
+  - GeoTrade Team
+
+license: MIT
+
+observation_space:
+  type: structured
+  description: >
+    Each observation contains:
+    (1) GeopoliticalContext — GTI score (0–100), severity, region, categories,
+        headline, description, news headlines, affected sectors.
+    (2) MarketSnapshot — per-asset price, daily change, volatility regime,
+        GTI sensitivity for 5–6 assets.
+    (3) PortfolioState — current weights, cash pct, unrealized PnL, drawdown.
+    (4) Natural-language prompt describing the agent's task for this step.
+
+action_space:
+  type: structured
+  description: >
+    Agent submits a list of AssetDecisions (symbol, direction BUY/SELL/HOLD,
+    target weight 0–1, confidence 0–1), plus a primary_signal string and a
+    free-text reasoning chain. Weights must sum ≤ 1.0; no single asset > 45%.
+
+reward_space:
+  type: continuous
+  range: [0.0, 1.0]
+  description: >
+    Scalar reward in [0,1] with decomposed components (accuracy,
+    risk_management, opportunity_capture, constraint_satisfaction,
+    reasoning_quality). Partial-progress signal provided every step.
+
+tasks:
+  - id: task_easy
+    name: Geopolitical Signal Identification
+    difficulty: easy
+    max_steps: 1
+    num_scenarios: 5
+    description: >
+      Given a geopolitical event description and a 5-asset market snapshot,
+      identify the top-3 most impacted assets and their BUY/SELL/HOLD direction.
+    scoring: "0.45*asset_F1 + 0.45*direction_accuracy + 0.10*reasoning_quality"
+    expected_score_range: [0.3, 0.8]
+
+  - id: task_medium
+    name: Portfolio Geopolitical Hedging
+    difficulty: medium
+    max_steps: 1
+    num_scenarios: 3
+    description: >
+      Given a 6-asset portfolio and a geopolitical scenario with crisis intensity,
+      rebalance portfolio weights to hedge geopolitical risk and capture
+      opportunities. Weights must satisfy portfolio constraints.
+    scoring: "0.40*opportunity + 0.25*risk_mgmt + 0.20*constraints + 0.15*reasoning"
+    expected_score_range: [0.2, 0.7]
+
+  - id: task_hard
+    name: Crisis Cascade Portfolio Management
+    difficulty: hard
+    max_steps: 5
+    num_scenarios: 2
+    description: >
+      Manage a 6-asset portfolio through a 5-step evolving geopolitical crisis
+      (escalation → peak → de-escalation). Agent must update positions at each
+      step as new intelligence arrives. Terminal reward is based on PnL vs
+      benchmark, max drawdown control, and per-step prediction accuracy.
+    scoring: "0.35*step_accuracy + 0.40*pnl_vs_benchmark + 0.25*drawdown_control"
+    expected_score_range: [0.1, 0.6]
+
+endpoints:
+  reset: POST /reset
+  step:  POST /step
+  state: GET  /state
+  tasks: GET  /tasks
+  health: GET /health
+
+environment_variables:
+  API_BASE_URL:
+    description: OpenAI-compatible API base URL for the inference script
+    required: true
+    example: "https://api.openai.com/v1"
+  MODEL_NAME:
+    description: Model identifier for LLM inference
+    required: true
+    example: "gpt-4o-mini"
+  HF_TOKEN:
+    description: Hugging Face API token (used for Space deployment)
+    required: false
+
+docker:
+  build: "docker build -t geotrade-openenv ."
+  run: "docker run -p 7860:7860 geotrade-openenv"
+  port: 7860
+
+huggingface:
+  space_sdk: docker
+  tags:
+    - openenv
+    - geopolitics
+    - trading
