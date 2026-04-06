@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -193,6 +195,14 @@ def create_app() -> FastAPI:
     # WebSocket routes (no prefix duplication needed)
     app.include_router(ws_routes.router)
     app.include_router(ws_routes.router, prefix=settings.api_v1_str)
+
+    # Serve static frontend files from dist folder
+    # Mount at the end so API routes take precedence
+    frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+    if frontend_dist.exists():
+        app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
+    else:
+        logger.warning("frontend_dist_not_found", path=str(frontend_dist))
 
     return app
 
