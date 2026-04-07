@@ -35,7 +35,9 @@ COPY config ./config
 COPY db ./db
 COPY alembic ./alembic
 COPY scripts ./scripts
-COPY *.py ./
+# Copy only specific .py files, excluding inference.py and validation scripts
+COPY pyproject.toml ./
+# Note: inference.py is excluded intentionally - it's for OpenEnv evaluation system only
 
 # Copy built frontend from stage 1 into backend directory
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist

@@ -175,14 +175,22 @@ if __name__ == "__main__":
     # Only run if explicitly called as main script
     import sys
     try:
-        # Use asyncio.run safely
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
         try:
-            loop.run_until_complete(main())
-            sys.exit(0)
-        finally:
-            loop.close()
+            # Try the standard asyncio.run() first
+            asyncio.run(main())
+        except RuntimeError as e:
+            if "asyncio.run() cannot be called from a running event loop" in str(e):
+                # If there's already an event loop running, use it
+                import asyncio.runners
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If truly running, create a task instead
+                    loop.create_task(main())
+                else:
+                    loop.run_until_complete(main())
+            else:
+                raise
+        sys.exit(0)
     except Exception as e:
         print(f"[ERROR] {e}", flush=True)
         sys.exit(1)
