@@ -1,4 +1,4 @@
-name: geotrade-openenv
+name: geo-trade
 version: "1.0.0"
 description: >
   GeoTrade is a geopolitical trading environment that evaluates AI agents on
@@ -19,6 +19,8 @@ authors:
   - GeoTrade Team
 
 license: MIT
+
+entrypoint: python app/main.py
 
 observation_space:
   type: structured
