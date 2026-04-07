@@ -172,4 +172,10 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import sys
+    try:
+        asyncio.run(main())
+        sys.exit(0)
+    except Exception as e:
+        print(f"[ERROR] {e}", flush=True)
+        sys.exit(1)
