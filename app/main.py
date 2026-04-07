@@ -22,6 +22,7 @@ from app.api.v1 import (
     gti,
     health,
     market,
+    openenv_api,
     portfolio,
     risk,
     signals,
@@ -174,6 +175,7 @@ def create_app() -> FastAPI:
     # Routes (support both legacy root and versioned paths)
     api_routers = [
         health.router,
+        openenv_api.router,
         gti.router,
         signals.router,
         events.router,

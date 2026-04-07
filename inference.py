@@ -1,11 +1,11 @@
-import asyncio
 import os
 import textwrap
 from typing import List, Optional
 
 from openai import OpenAI
 
-from my_env_v4 import MyEnvV4Action, MyEnvV4Env
+from openenv.environment import GeoTradeEnv
+from openenv.models import GeoTradeAction
 
 # Environment configuration
 IMAGE_NAME = os.getenv("IMAGE_NAME")
@@ -13,8 +13,8 @@ API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-TASK_NAME = os.getenv("MY_ENV_V4_TASK", "echo")
-BENCHMARK = os.getenv("MY_ENV_V4_BENCHMARK", "my_env_v4")
+TASK_NAME = os.getenv("GEOTRADE_TASK", "task_easy")
+BENCHMARK = os.getenv("GEOTRADE_BENCHMARK", "geotrade")
 
 MAX_STEPS = 8
 TEMPERATURE = 0.7
@@ -97,11 +97,11 @@ def get_model_message(
         return "hello"
 
 
-async def main() -> None:
+def main() -> None:
     """Main inference loop."""
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-    env = await MyEnvV4Env.from_docker_image(IMAGE_NAME)
+    env = GeoTradeEnv(task_id=TASK_NAME)
 
     history: List[str] = []
     rewards: List[float] = []
@@ -112,46 +112,40 @@ async def main() -> None:
     log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
 
     try:
-        result = await env.reset()
-        last_echoed = result.observation.echoed_message
-        last_reward = 0.0
-
+        obs = env.reset()
+        
         for step in range(1, MAX_STEPS + 1):
-            if result.done:
+            if env._done:
                 break
 
-            message = get_model_message(client, step, last_echoed, last_reward, history)
+            message = get_model_message(client, step, str(obs), 0.0, history)
 
-            result = await env.step(MyEnvV4Action(message=message))
-            obs = result.observation
-
-            reward = result.reward or 0.0
-            done = result.done
-            error = None
+            try:
+                result = env.step(GeoTradeAction(task_id=TASK_NAME, action=message))
+                reward = float(result.reward.total) if result.reward else 0.0
+                done = result.done
+                error = None
+            except Exception as e:
+                reward = 0.0
+                done = True
+                error = str(e)
 
             rewards.append(reward)
             steps_taken = step
-            last_echoed = obs.echoed_message
-            last_reward = reward
 
             log_step(step=step, action=message, reward=reward, done=done, error=error)
-
             history.append(f"Step {step}: {message!r} -> reward {reward:+.2f}")
 
             if done:
                 break
 
-        score = sum(rewards) / MAX_TOTAL_REWARD if MAX_TOTAL_REWARD > 0 else 0.0
+        score = sum(rewards) / MAX_STEPS if MAX_STEPS > 0 else 0.0
         score = min(max(score, 0.0), 1.0)
         success = score >= SUCCESS_SCORE_THRESHOLD
 
     finally:
-        try:
-            await env.close()
-        except Exception as e:
-            print(f"[DEBUG] env.close() error (container cleanup): {e}", flush=True)
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
