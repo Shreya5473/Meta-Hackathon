@@ -326,7 +326,7 @@ pip install -r requirements_openenv.txt
 # Set environment variables
 export API_BASE_URL=https://router.huggingface.co/v1
 export MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
-export HF_TOKEN=hf_[your-actual-token-here]
+export HF_TOKEN=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
 
 
 # Run the baseline inference script
@@ -423,7 +423,7 @@ docker build -t geotrade-openenv .
 docker run -p 7860:7860 \
  -e API_BASE_URL=https://router.huggingface.co/v1 \
  -e MODEL_NAME=Qwen/Qwen2.5-72B-Instruct \
- -e HF_TOKEN=hf_[your-actual-token-here] \
+ -e HF_TOKEN=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 \
  geotrade-openenv
 ```
 
@@ -516,7 +516,7 @@ Meta-Hackathon/
 |---|---|---|---|
 | `API_BASE_URL` | Yes | `https://router.huggingface.co/v1` | OpenAI-compatible API base URL |
 | `MODEL_NAME` | Yes | `Qwen/Qwen2.5-72B-Instruct` | Model identifier for LLM inference |
-| `HF_TOKEN` | Yes | — `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` | Hugging Face API token (obtain from https://huggingface.co/settings/tokens) |
+| `HF_TOKEN` | Yes | `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` | Hugging Face API token (obtain from https://huggingface.co/settings/tokens) |
 | `IMAGE_NAME` | No | — | Docker image name for containerised evaluation |
 
 
