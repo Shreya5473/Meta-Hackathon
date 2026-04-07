@@ -22,6 +22,7 @@ from app.api.v1 import (
     gti,
     health,
     market,
+    openenv,
     portfolio,
     risk,
     signals,
@@ -187,6 +188,7 @@ def create_app() -> FastAPI:
         globe.router,
         signals_v2.router,
         waitlist.router,
+        openenv.router,
     ]
     for router in api_routers:
         app.include_router(router)
