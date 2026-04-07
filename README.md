@@ -93,7 +93,7 @@ No existing OpenEnv environment covers this domain. GeoTrade fills that gap.
 | **Increasing Difficulty** | ✅ | Easy → Medium → Hard with appropriate grading curves |
 | **Programmatic Task Graders** | ✅ | Deterministic scores [0.0, 1.0] in graders.py for each task |
 | **Meaningful Reward Function** | ✅ | Decomposed: accuracy, risk_mgmt, opportunity_capture, constraints, reasoning |
-| **Baseline Inference Script** | ✅ | inference.py with HF_TOKEN credential reading, proper STDOUT format |
+| **Baseline Inference Script** | ✅ | inference.py with proper STDOUT format and OpenAI client integration |
 
 
 ### Non-Functional Requirements
@@ -128,7 +128,7 @@ GeoTrade fully implements the OpenEnv specification:
 | `state() → current state` | `GeoTradeEnv.state()` in `openenv/environment.py` |
 | `openenv.yaml` metadata | Root-level `openenv.yaml` |
 | HTTP server endpoints | `/reset`, `/step`, `/close`, `/state`, `/health` via `openenv_server.py` |
-| Baseline inference script | `inference.py` — reads credentials from `HF_TOKEN`, proper STDOUT format |
+| Baseline inference script | `inference.py` — OpenAI-compatible client for LLM integration |
 | Hugging Face Space deployment | Docker SDK, tagged `openenv`, port 7860 |
 
 
@@ -360,7 +360,6 @@ pip install -r requirements_openenv.txt
 # Set environment variables
 export API_BASE_URL=https://router.huggingface.co/v1
 export MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
-export HF_TOKEN=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
 
 
 # Option 1: Run the standalone OpenEnv API server
@@ -483,7 +482,6 @@ docker build -t geotrade-openenv .
 docker run -p 7860:7860 \
   -e API_BASE_URL=https://router.huggingface.co/v1 \
   -e MODEL_NAME=Qwen/Qwen2.5-72B-Instruct \
-  -e HF_TOKEN=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 \
   geotrade-openenv
 ```
 
@@ -506,7 +504,6 @@ The environment is deployable as a Docker-SDK Hugging Face Space tagged with `op
 3. Set the following Space secrets in the Space settings:
    - `API_BASE_URL` = https://router.huggingface.co/v1
    - `MODEL_NAME` = Qwen/Qwen2.5-72B-Instruct
-   - `HF_TOKEN` = your Hugging Face API token
 4. The Space will auto-build and expose:
    - **OpenEnv API:** https://your-username-geo-trade.hf.space/docs
    - **Frontend:** https://your-username-geo-trade.hf.space
@@ -563,7 +560,6 @@ To reproduce these scores:
 ```bash
 export API_BASE_URL=https://router.huggingface.co/v1
 export MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
-export HF_TOKEN=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
 python inference.py
 ```
 
@@ -611,7 +607,6 @@ Meta-Hackathon/
 |---|---|---|---|
 | `API_BASE_URL` | Yes | `https://router.huggingface.co/v1` | OpenAI-compatible API base URL |
 | `MODEL_NAME` | Yes | `Qwen/Qwen2.5-72B-Instruct` | Model identifier for LLM inference |
-| `HF_TOKEN` | Yes | `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` | Hugging Face API token (obtain from https://huggingface.co/settings/tokens) |
 | `IMAGE_NAME` | No | — | Docker image name for containerised evaluation |
 
 
