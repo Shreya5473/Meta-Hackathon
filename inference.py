@@ -1,12 +1,13 @@
 import asyncio
 import os
+import sys
 import textwrap
 from typing import List, Optional
 
 from openai import OpenAI
 
 from openenv.environment import GeoTradeEnv
-from openenv.models import GeoTradeAction
+from openenv.models import GeoTradeAction, AssetDecision
 
 # Environment configuration
 IMAGE_NAME = os.getenv("IMAGE_NAME")
@@ -128,7 +129,6 @@ async def main() -> None:
             message = get_model_message(client, step, str(last_observation), last_reward, history)
 
             # Create action with the message as reasoning
-            from openenv.models import AssetDecision
             action = GeoTradeAction(
                 task_id="task_easy",
                 decisions=[
@@ -172,10 +172,17 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    # Only run if explicitly called as main script
     import sys
     try:
-        asyncio.run(main())
-        sys.exit(0)
+        # Use asyncio.run safely
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(main())
+            sys.exit(0)
+        finally:
+            loop.close()
     except Exception as e:
         print(f"[ERROR] {e}", flush=True)
         sys.exit(1)

@@ -12,3 +12,10 @@ model_artifacts
 frontend/node_modules
 frontend/.svelte-kit
 frontend/dist
+inference.py
+pre_validation.py
+CREDENTIALS_CONFIG.py
+MODEL_AND_IMAGE_EXPLANATION.py
+SUBMISSION_REPORT.md
+VALIDATION_REFERENCE.py
+FINAL_VERIFICATION.txt
