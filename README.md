@@ -34,6 +34,7 @@ GeoTrade OpenEnv simulates the real-world task of analysing geopolitical events 
 
 
 - [Motivation](#motivation)
+- [Requirements Checklist](#requirements-checklist)
 - [OpenEnv Compliance](#openenv-compliance)
 - [Tasks](#tasks)
 - [Observation Space](#observation-space)
@@ -73,6 +74,39 @@ Geopolitical trading is a genuinely hard real-world task that:
 
 
 No existing OpenEnv environment covers this domain. GeoTrade fills that gap.
+
+
+---
+
+
+## Requirements Checklist
+
+
+### Functional Requirements
+
+
+| Requirement | Status | Details |
+|---|---|---|
+| **Real-World Task Simulation** | ✅ | Geopolitical trading analysis — humans perform this daily in finance |
+| **OpenEnv Specification Compliance** | ✅ | Full implementation: Pydantic models, reset/step/state, openenv.yaml, HTTP API |
+| **Minimum Three Tasks** | ✅ | task_easy (1-step), task_medium (1-step), task_hard (multi-step) |
+| **Increasing Difficulty** | ✅ | Easy → Medium → Hard with appropriate grading curves |
+| **Programmatic Task Graders** | ✅ | Deterministic scores [0.0, 1.0] in graders.py for each task |
+| **Meaningful Reward Function** | ✅ | Decomposed: accuracy, risk_mgmt, opportunity_capture, constraints, reasoning |
+| **Baseline Inference Script** | ✅ | inference.py with HF_TOKEN credential reading, proper STDOUT format |
+
+
+### Non-Functional Requirements
+
+
+| Requirement | Status | Details |
+|---|---|---|
+| **HuggingFace Spaces Deployment** | ✅ | Docker SDK, `openenv` tag, port 7860 |
+| **Containerized Execution** | ✅ | Multi-stage Dockerfile: Node 20 + Python 3.11-slim |
+| **Docker Build & Run** | ✅ | Builds with `docker build`, runs with `docker run` |
+| **Complete Documentation** | ✅ | Overview, motivation, spaces, task descriptions, setup, baseline scores |
+| **Observation Space Definition** | ✅ | GeoTradeObservation model with full spec |
+| **Action Space Definition** | ✅ | GeoTradeAction model with validation rules |
 
 
 ---
