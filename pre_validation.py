@@ -86,12 +86,31 @@ def validate_inference_py() -> bool:
     content = inference_path.read_text()
     
     # Check for required imports
-    required_imports = ["asyncio", "OpenAI", "MyEnvV4Env", "MyEnvV4Action"]
+    required_imports = ["asyncio", "OpenAI"]
     for imp in required_imports:
         if imp not in content:
             print_error(f"Missing required import: {imp}")
             return False
         print_success(f"Found import: {imp}")
+    
+    # Check for environment/LLM imports (either MyEnvV4Env or GeoTradeEnv)
+    if "MyEnvV4Env" in content or "GeoTradeEnv" in content:
+        if "MyEnvV4Env" in content:
+            print_success(f"Found import: MyEnvV4Env")
+        else:
+            print_success(f"Found import: GeoTradeEnv")
+    else:
+        print_error("Missing environment import (MyEnvV4Env or GeoTradeEnv)")
+        return False
+    
+    if "MyEnvV4Action" in content or "GeoTradeAction" in content:
+        if "MyEnvV4Action" in content:
+            print_success(f"Found import: MyEnvV4Action")
+        else:
+            print_success(f"Found import: GeoTradeAction")
+    else:
+        print_error("Missing action import (MyEnvV4Action or GeoTradeAction)")
+        return False
     
     # Check for required functions
     required_functions = ["log_start", "log_step", "log_end", "main"]
@@ -128,7 +147,7 @@ def validate_inference_py() -> bool:
     print_success("main() is async")
     
     # Check for env.reset() and env.step()
-    if "env.reset()" not in content:
+    if "env.reset(" not in content:
         print_error("Missing env.reset() call")
         return False
     print_success("Found env.reset() call")

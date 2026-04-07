@@ -5,7 +5,8 @@ from typing import List, Optional
 
 from openai import OpenAI
 
-from my_env_v4 import MyEnvV4Action, MyEnvV4Env
+from openenv.environment import GeoTradeEnv
+from openenv.models import GeoTradeAction
 
 # Environment configuration
 IMAGE_NAME = os.getenv("IMAGE_NAME")
@@ -101,7 +102,8 @@ async def main() -> None:
     """Main inference loop."""
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-    env = await MyEnvV4Env.from_docker_image(IMAGE_NAME)
+    # Initialize environment (GeoTradeEnv is synchronous, not async)
+    env = GeoTradeEnv(task_id="task_easy")
 
     history: List[str] = []
     rewards: List[float] = []
@@ -112,31 +114,50 @@ async def main() -> None:
     log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
 
     try:
-        result = await env.reset()
-        last_echoed = result.observation.echoed_message
+        result = env.reset(seed=42)
+        last_observation = result
         last_reward = 0.0
 
         for step in range(1, MAX_STEPS + 1):
-            if result.done:
+            if env._done:
                 break
 
-            message = get_model_message(client, step, last_echoed, last_reward, history)
+            # Build user prompt from current observation
+            user_prompt = build_user_prompt(step, str(last_observation), last_reward, history)
 
-            result = await env.step(MyEnvV4Action(message=message))
+            message = get_model_message(client, step, str(last_observation), last_reward, history)
+
+            # Create action with the message as reasoning
+            from openenv.models import AssetDecision
+            action = GeoTradeAction(
+                task_id="task_easy",
+                decisions=[
+                    AssetDecision(
+                        symbol="UNKNOWN",
+                        direction="HOLD",
+                        weight=0.0,
+                        confidence=0.5,
+                    )
+                ],
+                primary_signal=message[:100] if len(message) > 100 else message,
+                reasoning=message,
+            )
+
+            result = env.step(action)
             obs = result.observation
 
-            reward = result.reward or 0.0
+            reward = result.reward.total or 0.0
             done = result.done
             error = None
 
             rewards.append(reward)
             steps_taken = step
-            last_echoed = obs.echoed_message
+            last_observation = obs
             last_reward = reward
 
             log_step(step=step, action=message, reward=reward, done=done, error=error)
 
-            history.append(f"Step {step}: {message!r} -> reward {reward:+.2f}")
+            history.append(f"Step {step}: {message[:50]}... → reward {reward:+.2f}")
 
             if done:
                 break
@@ -146,10 +167,7 @@ async def main() -> None:
         success = score >= SUCCESS_SCORE_THRESHOLD
 
     finally:
-        try:
-            await env.close()
-        except Exception as e:
-            print(f"[DEBUG] env.close() error (container cleanup): {e}", flush=True)
+        # No cleanup needed for GeoTradeEnv
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 
