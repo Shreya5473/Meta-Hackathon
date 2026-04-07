@@ -35,9 +35,10 @@ COPY config ./config
 COPY db ./db
 COPY alembic ./alembic
 COPY scripts ./scripts
-# Copy only specific .py files, excluding inference.py and validation scripts
-COPY pyproject.toml ./
-# Note: inference.py is excluded intentionally - it's for OpenEnv evaluation system only
+
+# NOTE: We intentionally do NOT copy inference.py or other helper scripts
+# They are not needed for the FastAPI app and cause asyncio conflicts
+# OpenEnv will fetch inference.py from GitHub separately for evaluation
 
 # Copy built frontend from stage 1 into backend directory
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
