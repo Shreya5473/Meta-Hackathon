@@ -93,8 +93,8 @@ GeoTrade fully implements the OpenEnv specification:
 | `step(action) → (obs, reward, done, info)` | `GeoTradeEnv.step(action)` in `openenv/environment.py` |
 | `state() → current state` | `GeoTradeEnv.state()` in `openenv/environment.py` |
 | `openenv.yaml` metadata | Root-level `openenv.yaml` |
-| HTTP server endpoints | `/reset`, `/step`, `/state`, `/tasks`, `/health` via FastAPI |
-| Baseline inference script | `inference.py` — reads credentials from `HF_TOKEN` env var |
+| HTTP server endpoints | `/reset`, `/step`, `/close`, `/state`, `/health` via `openenv_server.py` |
+| Baseline inference script | `inference.py` — reads credentials from `HF_TOKEN`, proper STDOUT format |
 | Hugging Face Space deployment | Docker SDK, tagged `openenv`, port 7860 |
 
 
@@ -316,7 +316,7 @@ The reward is decomposed into named components (`accuracy`, `risk_management`, `
 ```bash
 # Clone the repository
 git clone https://github.com/Shreya5473/Meta-Hackathon
-cd Meta-Hackathon
+cd Meta-Hackathon/m
 
 
 # Install lean dependencies
@@ -329,12 +329,18 @@ export MODEL_NAME=Qwen/Qwen2.5-72B-Instruct
 export HF_TOKEN=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
 
 
-# Run the baseline inference script
+# Option 1: Run the standalone OpenEnv API server
+python openenv_server.py --port 8001
+# Server available at http://localhost:8001
+# Interactive docs at http://localhost:8001/docs
+
+
+# Option 2: Run the baseline inference script
 python inference.py
-
-
-# Start the HTTP server
-python -m uvicorn openenv.server:app --host 0.0.0.0 --port 7860
+# Outputs proper OpenEnv STDOUT format:
+# [START] task=task_easy env=geotrade model=Qwen/Qwen2.5-72B-Instruct
+# [STEP] step=1 action=... reward=0.00 done=false error=null
+# [END] success=true steps=8 score=0.75 rewards=...
 ```
 
 
@@ -369,40 +375,60 @@ print(result.reward.explanation)
 ```
 
 
-### HTTP API (when server is running)
+### HTTP API (OpenEnv Server running on port 8001)
 
 
 ```bash
-# Reset — start a new episode
-curl -X POST http://localhost:7860/reset \
- -H "Content-Type: application/json" \
- -d '{"task_id": "task_easy", "seed": 42}'
+# Health check
+curl http://localhost:8001/health
+
+
+# Reset — start a new episode and get initial observation
+curl -X POST http://localhost:8001/reset \
+  -H "Content-Type: application/json" \
+  -d '{"task_id": "task_easy", "seed": 42}'
+# Returns: {"session_id": "session_0", "observation": {...}}
 
 
 # Step — submit action (use session_id from reset response)
-curl -X POST "http://localhost:7860/step?session_id=<SESSION_ID>" \
- -H "Content-Type: application/json" \
- -d '{
-   "task_id": "task_easy",
-   "decisions": [
-     {"symbol": "XAUUSD", "direction": "BUY", "weight": 0.20, "confidence": 0.85}
-   ],
-   "primary_signal": "Safe haven bid on energy crisis",
-   "reasoning": "Gold typically surges during European energy crises..."
- }'
+curl -X POST http://localhost:8001/step \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "session_0",
+    "action": {
+      "task_id": "task_easy",
+      "decisions": [
+        {"symbol": "XAUUSD", "direction": "BUY", "weight": 0.20, "confidence": 0.85}
+      ],
+      "primary_signal": "Safe haven bid on energy crisis",
+      "reasoning": "Gold typically surges during European energy crises..."
+    }
+  }'
+# Returns: {"observation": {...}, "reward": {...}, "done": false, "info": {}}
 
 
-# State — inspect current environment state
-curl "http://localhost:7860/state?session_id=<SESSION_ID>"
+# Get current state — inspect environment state
+curl "http://localhost:8001/state?session_id=session_0"
+# Returns: {"session_id": "session_0", "observation": {...}, "done": false}
 
 
-# List available tasks
-curl http://localhost:7860/tasks
-
-
-# Health check
-curl http://localhost:7860/health
+# Close session — cleanup after episode
+curl -X POST "http://localhost:8001/close?session_id=session_0"
+# Returns: {"status": "closed", "session_id": "session_0"}
 ```
+
+
+### Interactive API Documentation
+
+
+When the OpenEnv server is running, explore the API with:
+
+
+- **Swagger UI:** http://localhost:8001/docs
+- **ReDoc:** http://localhost:8001/redoc
+
+
+You can test all endpoints directly in the browser!
 
 
 ---
@@ -419,30 +445,65 @@ curl http://localhost:7860/health
 docker build -t geotrade-openenv .
 
 
-# Run the container
+# Run the container (exposes OpenEnv API on port 7860)
 docker run -p 7860:7860 \
- -e API_BASE_URL=https://router.huggingface.co/v1 \
- -e MODEL_NAME=Qwen/Qwen2.5-72B-Instruct \
- -e HF_TOKEN=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 \
- geotrade-openenv
+  -e API_BASE_URL=https://router.huggingface.co/v1 \
+  -e MODEL_NAME=Qwen/Qwen2.5-72B-Instruct \
+  -e HF_TOKEN=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 \
+  geotrade-openenv
 ```
 
 
-The server starts on port **7860** and serves the OpenEnv FastAPI endpoints.
+The Dockerfile uses a multi-stage build:
+1. **Node 20** (frontend build) → creates dist/
+2. **Python 3.11-slim** (backend runtime) → serves on port 7860
+
+The container automatically runs `openenv_server.py` on startup.
 
 
 ### Hugging Face Spaces
 
 
-The environment is deployable as a Docker-SDK Hugging Face Space tagged with `openenv`.
+The environment is deployable as a Docker-SDK Hugging Face Space tagged with `openenv`:
 
 
 1. Fork or push this repository to Hugging Face Hub
-2. Set the following Space secrets: `API_BASE_URL`, `MODEL_NAME`, `HF_TOKEN`
-3. The Space will build and expose the server at `https://<your-space>.hf.space`
-
+2. Create a Space with Docker SDK and the `openenv` tag
+3. Set the following Space secrets in the Space settings:
+   - `API_BASE_URL` = https://router.huggingface.co/v1
+   - `MODEL_NAME` = Qwen/Qwen2.5-72B-Instruct
+   - `HF_TOKEN` = your Hugging Face API token
+4. The Space will auto-build and expose:
+   - **OpenEnv API:** https://your-username-geo-trade.hf.space/docs
+   - **Frontend:** https://your-username-geo-trade.hf.space
 
 The `openenv.yaml` file at the repository root provides all metadata required by the OpenEnv registry.
+
+
+### Validation
+
+
+Before submission, run the validation script:
+
+
+```bash
+# Make it executable
+chmod +x validate-submission.sh
+
+
+# Run against local server
+./validate-submission.sh http://localhost:8001
+
+
+# Or against remote Space
+./validate-submission.sh https://your-username-geo-trade.hf.space
+```
+
+
+The validator checks:
+1. ✅ HF Space /reset endpoint responds (HTTP 200)
+2. ✅ Docker image builds successfully
+3. ✅ `openenv validate` passes all checks
 
 
 ---
