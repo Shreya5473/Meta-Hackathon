@@ -1,5 +1,8 @@
 import os
 import textwrap
+import json
+from urllib import request as urllib_request
+from urllib import error as urllib_error
 from typing import Any, List, Optional
 
 from openenv.environment import GeoTradeEnv
@@ -7,12 +10,18 @@ from openenv.models import GeoTradeAction
 
 # Environment configuration
 IMAGE_NAME = os.getenv("IMAGE_NAME")
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+API_KEY = os.getenv("API_KEY")
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+API_BASE_URL = os.getenv("API_BASE_URL")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 TASK_NAME = os.getenv("GEOTRADE_TASK", "task_easy")
 BENCHMARK = os.getenv("GEOTRADE_BENCHMARK", "geotrade")
+
+# Local fallback defaults (used only outside validator when API env vars are absent)
+if not API_BASE_URL:
+    API_BASE_URL = "https://router.huggingface.co/v1"
+if not API_KEY:
+    API_KEY = os.getenv("HF_TOKEN")
 
 MAX_STEPS = 8
 TEMPERATURE = 0.7
@@ -76,10 +85,11 @@ def get_model_message(
     client: Any | None, step: int, last_echoed: str, last_reward: float, history: List[str]
 ) -> str:
     """Get a message from the LLM."""
-    if client is None:
-        return f"step_{step}_fallback_message_with_context"
-
     user_prompt = build_user_prompt(step, last_echoed, last_reward, history)
+
+    if client is None:
+        return request_model_message_via_http(step=step, user_prompt=user_prompt)
+
     try:
         completion = client.chat.completions.create(
             model=MODEL_NAME,
@@ -95,7 +105,54 @@ def get_model_message(
         return text if text else "hello"
     except Exception as exc:
         print(f"[DEBUG] Model request failed: {exc}", flush=True)
-        return "hello"
+        return request_model_message_via_http(step=step, user_prompt=user_prompt)
+
+
+def request_model_message_via_http(step: int, user_prompt: str) -> str:
+    """Call OpenAI-compatible chat completion endpoint via API_BASE_URL/API_KEY."""
+    if not API_BASE_URL or not API_KEY:
+        print("[DEBUG] Missing API_BASE_URL/API_KEY; using local fallback message", flush=True)
+        return f"step_{step}_fallback_message_with_context"
+
+    endpoint = f"{API_BASE_URL.rstrip('/')}/chat/completions"
+    payload = {
+        "model": MODEL_NAME,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": TEMPERATURE,
+        "max_tokens": MAX_TOKENS,
+        "stream": False,
+    }
+
+    req = urllib_request.Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {API_KEY}",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib_request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            text = (
+                data.get("choices", [{}])[0]
+                .get("message", {})
+                .get("content", "")
+                .strip()
+            )
+            return text if text else "hello"
+    except urllib_error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="ignore")
+        print(f"[DEBUG] HTTP proxy request failed: {exc.code} {body}", flush=True)
+    except Exception as exc:
+        print(f"[DEBUG] HTTP proxy request error: {exc}", flush=True)
+
+    return "hello"
 
 
 def create_openai_client() -> Any | None:
