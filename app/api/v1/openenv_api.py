@@ -62,7 +62,7 @@ class StateResponse(BaseModel):
 
 
 @router.post("/reset", response_model=ResetResponse)
-async def reset_environment(request: ResetRequest) -> ResetResponse:
+async def reset_environment(request: ResetRequest | None = None) -> ResetResponse:
     """Reset the environment and return initial observation.
     
     Args:
@@ -74,6 +74,9 @@ async def reset_environment(request: ResetRequest) -> ResetResponse:
     global _session_counter
     
     try:
+        if request is None:
+            request = ResetRequest()
+
         GeoTradeEnv, _, _, _ = _get_env_classes()
         
         # Create new environment instance

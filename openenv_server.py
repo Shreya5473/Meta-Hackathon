@@ -114,7 +114,7 @@ async def root() -> dict[str, object]:
 
 
 @app.post("/reset", response_model=ResetResponse)
-async def reset_environment(request: ResetRequest) -> ResetResponse:
+async def reset_environment(request: ResetRequest | None = None) -> ResetResponse:
     """Reset the environment and return initial observation.
     
     Args:
@@ -126,6 +126,9 @@ async def reset_environment(request: ResetRequest) -> ResetResponse:
     global _session_counter
     
     try:
+        if request is None:
+            request = ResetRequest()
+
         # Create new environment instance
         task_id = request.task_id
         if task_id not in ("task_easy", "task_medium", "task_hard"):
