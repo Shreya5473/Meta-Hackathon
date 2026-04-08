@@ -96,6 +96,23 @@ async def health_check() -> dict[str, str]:
     return {"status": "healthy", "service": "openenv-api"}
 
 
+@app.get("/")
+async def root() -> dict[str, object]:
+    """Root endpoint for browser sanity check."""
+    return {
+        "service": "GeoTrade OpenEnv API",
+        "status": "ok",
+        "docs": "/docs",
+        "endpoints": {
+            "health": "GET /health",
+            "reset": "POST /reset",
+            "step": "POST /step",
+            "state": "GET /state?session_id=<id>",
+            "close": "POST /close?session_id=<id>",
+        },
+    }
+
+
 @app.post("/reset", response_model=ResetResponse)
 async def reset_environment(request: ResetRequest) -> ResetResponse:
     """Reset the environment and return initial observation.
