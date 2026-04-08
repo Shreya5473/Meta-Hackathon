@@ -31,6 +31,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend source
 COPY app ./app
+COPY openenv ./openenv
 COPY config ./config
 COPY db ./db
 COPY alembic ./alembic
