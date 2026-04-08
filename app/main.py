@@ -175,7 +175,9 @@ def create_app() -> FastAPI:
     # OpenEnv routes must be at root level (per OpenEnv spec)
     # Register FIRST so they take precedence
     # Registered without any prefix so endpoints are /reset, /step, /close, /state, /health
+    logger.info("Registering OpenEnv API router (root level)", router_type="openenv")
     app.include_router(openenv_api.router)
+    logger.info("Registering OpenEnv API router (/api/v1 prefix)", router_type="openenv_v1")
     app.include_router(openenv_api.router, prefix=settings.api_v1_str)
 
     # Routes (support both legacy root and versioned paths)
