@@ -25,6 +25,11 @@ def _clamp(v: float, lo: float = 0.0, hi: float = 1.0) -> float:
     return max(lo, min(hi, v))
 
 
+def _strict_unit(v: float, eps: float = 1e-4) -> float:
+    """Clamp score strictly inside (0, 1), avoiding exact boundary values."""
+    return max(eps, min(1.0 - eps, v))
+
+
 def _reasoning_keywords_score(text: str, keywords: list[str]) -> float:
     """Return fraction of keywords present in the reasoning text (case-insensitive)."""
     if not keywords or not text:
@@ -88,7 +93,7 @@ def grade_easy(action: GeoTradeAction, scenario: dict[str, Any]) -> GeoTradeRewa
     reasoning_score = _reasoning_keywords_score(reasoning_text, keywords)
 
     # ── Weighted total ────────────────────────────────────────────────────────
-    total = _clamp(0.45 * asset_score + 0.45 * direction_score + 0.10 * reasoning_score)
+    total = _strict_unit(_clamp(0.45 * asset_score + 0.45 * direction_score + 0.10 * reasoning_score))
     partial = _clamp((asset_score + direction_score) / 2)
 
     explanation = (
@@ -181,12 +186,12 @@ def grade_medium(action: GeoTradeAction, scenario: dict[str, Any]) -> GeoTradeRe
     opportunity = 0.6 * move_score + 0.4 * proximity_score
     risk_mgmt = 0.5 * diversification + 0.5 * constraint_score
 
-    total = _clamp(
+    total = _strict_unit(_clamp(
         0.40 * opportunity
         + 0.25 * risk_mgmt
         + 0.20 * constraint_score
         + 0.15 * reasoning_score
-    )
+    ))
     partial = _clamp((move_score + proximity_score) / 2)
 
     explanation = (
@@ -272,12 +277,12 @@ def grade_hard_step(
     reasoning_text = (action.reasoning or "") + " " + (action.primary_signal or "")
     reasoning_score = _reasoning_keywords_score(reasoning_text, keywords)
 
-    total = _clamp(
+    total = _strict_unit(_clamp(
         0.35 * direction_score
         + 0.35 * opportunity_score
         + 0.20 * risk_score
         + 0.10 * reasoning_score
-    )
+    ))
     partial = _clamp((direction_score + opportunity_score) / 2)
 
     explanation = (
@@ -353,11 +358,11 @@ def grade_hard_terminal(
         dd_score = _clamp(1.0 - excess / max_allowed_dd)
 
     # ── Weighted terminal total ───────────────────────────────────────────────
-    total = _clamp(
+    total = _strict_unit(_clamp(
         weights["prediction_accuracy"] * mean_accuracy
         + weights["pnl_performance"] * pnl_score
         + weights["risk_management"] * dd_score
-    )
+    ))
 
     explanation = (
         f"Mean step accuracy: {mean_accuracy:.2f} | "
