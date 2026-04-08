@@ -175,7 +175,6 @@ def create_app() -> FastAPI:
     # Routes (support both legacy root and versioned paths)
     api_routers = [
         health.router,
-        openenv_api.router,
         gti.router,
         signals.router,
         events.router,
@@ -193,6 +192,11 @@ def create_app() -> FastAPI:
     for router in api_routers:
         app.include_router(router)
         app.include_router(router, prefix=settings.api_v1_str)
+
+    # OpenEnv routes must be at root level (per OpenEnv spec)
+    # Registered without any prefix so endpoints are /reset, /step, /close, /state, /health
+    app.include_router(openenv_api.router)
+    app.include_router(openenv_api.router, prefix=settings.api_v1_str)
 
     # WebSocket routes (no prefix duplication needed)
     app.include_router(ws_routes.router)
