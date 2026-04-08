@@ -172,6 +172,12 @@ def create_app() -> FastAPI:
     # Exception handlers
     register_exception_handlers(app)
 
+    # OpenEnv routes must be at root level (per OpenEnv spec)
+    # Register FIRST so they take precedence
+    # Registered without any prefix so endpoints are /reset, /step, /close, /state, /health
+    app.include_router(openenv_api.router)
+    app.include_router(openenv_api.router, prefix=settings.api_v1_str)
+
     # Routes (support both legacy root and versioned paths)
     api_routers = [
         health.router,
@@ -192,11 +198,6 @@ def create_app() -> FastAPI:
     for router in api_routers:
         app.include_router(router)
         app.include_router(router, prefix=settings.api_v1_str)
-
-    # OpenEnv routes must be at root level (per OpenEnv spec)
-    # Registered without any prefix so endpoints are /reset, /step, /close, /state, /health
-    app.include_router(openenv_api.router)
-    app.include_router(openenv_api.router, prefix=settings.api_v1_str)
 
     # WebSocket routes (no prefix duplication needed)
     app.include_router(ws_routes.router)
