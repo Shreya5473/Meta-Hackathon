@@ -14,7 +14,7 @@ API_KEY = os.getenv("API_KEY")
 
 API_BASE_URL = os.getenv("API_BASE_URL")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-TASK_NAME = os.getenv("GEOTRADE_TASK", "task_easy")
+TASK_NAME = os.getenv("GEOTRADE_TASK", "all")
 BENCHMARK = os.getenv("GEOTRADE_BENCHMARK", "geotrade")
 
 # Local fallback defaults (used only outside validator when API env vars are absent)
@@ -27,6 +27,7 @@ MAX_STEPS = 8
 TEMPERATURE = 0.7
 MAX_TOKENS = 150
 SUCCESS_SCORE_THRESHOLD = 0.1
+SCORE_EPSILON = 1e-4
 
 # Max possible reward: each token contributes 0.1, across all steps
 _MAX_REWARD_PER_STEP = MAX_TOKENS * 0.1
@@ -52,18 +53,23 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
     error_val = error if error else "null"
     done_val = str(done).lower()
     print(
-        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
+        f"[STEP] step={step} action={action} reward={reward:.4f} done={done_val} error={error_val}",
         flush=True,
     )
 
 
 def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     """Log the end of the episode."""
-    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    rewards_str = ",".join(f"{r:.4f}" for r in rewards)
     print(
-        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}",
+        f"[END] success={str(success).lower()} steps={steps} score={score:.4f} rewards={rewards_str}",
         flush=True,
     )
+
+
+def strict_unit(value: float, eps: float = SCORE_EPSILON) -> float:
+    """Clamp metric strictly inside (0,1) for validator compatibility."""
+    return max(eps, min(1.0 - eps, value))
 
 
 def build_user_prompt(step: int, last_echoed: str, last_reward: float, history: List[str]) -> str:
@@ -170,30 +176,28 @@ def create_openai_client() -> Any | None:
         return None
 
 
-def main() -> None:
-    """Main inference loop."""
-    client = create_openai_client()
-
-    env = GeoTradeEnv(task_id=TASK_NAME)
+def run_episode(task_name: str, client: Any | None) -> None:
+    """Run one episode for a specific task and print OpenEnv logs."""
+    env = GeoTradeEnv(task_id=task_name)
 
     history: List[str] = []
     rewards: List[float] = []
     steps_taken = 0
-    score = 0.0
+    score = SCORE_EPSILON
     success = False
 
-    log_start(task=TASK_NAME, env=BENCHMARK, model=MODEL_NAME)
+    log_start(task=task_name, env=BENCHMARK, model=MODEL_NAME)
 
     try:
         obs = env.reset()
-        
+
         for step in range(1, MAX_STEPS + 1):
             if env._done:
                 break
 
             message = get_model_message(client, step, str(obs), 0.0, history)
             action_payload = GeoTradeAction(
-                task_id=TASK_NAME,
+                task_id=task_name,
                 decisions=[
                     {
                         "symbol": "XAUUSD",
@@ -208,29 +212,44 @@ def main() -> None:
 
             try:
                 result = env.step(action_payload)
-                reward = float(result.reward.total) if result.reward else 0.0
+                reward = float(result.reward.total) if result.reward else SCORE_EPSILON
                 done = result.done
                 error = None
             except Exception as e:
-                reward = 0.0
+                reward = SCORE_EPSILON
                 done = True
                 error = str(e)
 
+            reward = strict_unit(reward)
             rewards.append(reward)
             steps_taken = step
 
             log_step(step=step, action=message, reward=reward, done=done, error=error)
-            history.append(f"Step {step}: {message!r} -> reward {reward:+.2f}")
+            history.append(f"Step {step}: {message!r} -> reward {reward:+.4f}")
 
             if done:
                 break
 
-        score = sum(rewards) / MAX_STEPS if MAX_STEPS > 0 else 0.0
-        score = min(max(score, 0.0), 1.0)
+        raw_score = sum(rewards) / max(1, len(rewards))
+        score = strict_unit(raw_score)
         success = score >= SUCCESS_SCORE_THRESHOLD
 
     finally:
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+
+
+def main() -> None:
+    """Main inference entrypoint."""
+    client = create_openai_client()
+
+    base_tasks = ["task_easy", "task_medium", "task_hard"]
+    if TASK_NAME in base_tasks:
+        tasks_to_run = [TASK_NAME] + [t for t in base_tasks if t != TASK_NAME]
+    else:
+        tasks_to_run = base_tasks
+
+    for task_name in tasks_to_run:
+        run_episode(task_name=task_name, client=client)
 
 
 if __name__ == "__main__":
