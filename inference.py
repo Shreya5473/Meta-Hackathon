@@ -1,8 +1,6 @@
 import os
 import textwrap
-from typing import List, Optional
-
-from openai import OpenAI
+from typing import Any, List, Optional
 
 from openenv.environment import GeoTradeEnv
 from openenv.models import GeoTradeAction
@@ -75,9 +73,12 @@ def build_user_prompt(step: int, last_echoed: str, last_reward: float, history: 
 
 
 def get_model_message(
-    client: OpenAI, step: int, last_echoed: str, last_reward: float, history: List[str]
+    client: Any | None, step: int, last_echoed: str, last_reward: float, history: List[str]
 ) -> str:
     """Get a message from the LLM."""
+    if client is None:
+        return f"step_{step}_fallback_message_with_context"
+
     user_prompt = build_user_prompt(step, last_echoed, last_reward, history)
     try:
         completion = client.chat.completions.create(
@@ -97,9 +98,24 @@ def get_model_message(
         return "hello"
 
 
+def create_openai_client() -> Any | None:
+    """Create OpenAI-compatible client, or return None if unavailable."""
+    try:
+        from openai import OpenAI
+    except Exception as exc:
+        print(f"[DEBUG] OpenAI package unavailable: {exc}", flush=True)
+        return None
+
+    try:
+        return OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    except Exception as exc:
+        print(f"[DEBUG] OpenAI client init failed: {exc}", flush=True)
+        return None
+
+
 def main() -> None:
     """Main inference loop."""
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+    client = create_openai_client()
 
     env = GeoTradeEnv(task_id=TASK_NAME)
 
@@ -119,9 +135,22 @@ def main() -> None:
                 break
 
             message = get_model_message(client, step, str(obs), 0.0, history)
+            action_payload = GeoTradeAction(
+                task_id=TASK_NAME,
+                decisions=[
+                    {
+                        "symbol": "XAUUSD",
+                        "direction": "HOLD",
+                        "weight": 0.0,
+                        "confidence": 0.5,
+                    }
+                ],
+                primary_signal=message,
+                reasoning=message,
+            )
 
             try:
-                result = env.step(GeoTradeAction(task_id=TASK_NAME, action=message))
+                result = env.step(action_payload)
                 reward = float(result.reward.total) if result.reward else 0.0
                 done = result.done
                 error = None
