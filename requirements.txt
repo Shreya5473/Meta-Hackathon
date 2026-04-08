@@ -12,10 +12,11 @@ alembic==1.13.1
 structlog==24.2.0
 transformers==4.41.2
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.3.1+cpu
+torch==2.3.1 ; platform_machine == "aarch64"
+torch==2.3.1+cpu ; platform_machine != "aarch64"
 # For NLP
 vaderSentiment==3.3.2
-hdbscan==0.8.37
+hdbscan==0.8.37 ; platform_machine != "aarch64"
 scikit-learn==1.5.0
 numpy==1.26.4
 pandas==2.2.2
