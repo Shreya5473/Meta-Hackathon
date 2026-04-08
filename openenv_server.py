@@ -148,6 +148,17 @@ async def reset_environment(request: ResetRequest) -> ResetResponse:
         raise HTTPException(status_code=400, detail=f"Reset failed: {str(exc)}")
 
 
+@app.get("/reset", response_model=ResetResponse)
+async def reset_environment_get(
+    task_id: str = "task_easy",
+    seed: int = 42,
+    scenario_idx: int = 0,
+) -> ResetResponse:
+    """Compatibility reset endpoint for clients that call GET /reset."""
+    request = ResetRequest(task_id=task_id, seed=seed, scenario_idx=scenario_idx)
+    return await reset_environment(request)
+
+
 @app.post("/step", response_model=StepResponse)
 async def step_environment(request: StepRequest) -> StepResponse:
     """Take a step in the environment.
