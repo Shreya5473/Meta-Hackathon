@@ -47,4 +47,5 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 EXPOSE 7860
 
 # Run FastAPI server
+# Updated: 2026-04-08 - Fixed OpenEnv endpoint routing
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
